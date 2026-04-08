@@ -32,9 +32,19 @@ jobs:
           OPENCLAW_DOCS_SYNC_TOKEN: ${{ secrets.OPENCLAW_DOCS_SYNC_TOKEN }}
         run: |
           set -euo pipefail
+          test -n "${OPENCLAW_DOCS_SYNC_TOKEN:-}"
           git clone \
             "https://x-access-token:${OPENCLAW_DOCS_SYNC_TOKEN}@github.com/openclaw/docs.git" \
             publish
+
+      - name: Ensure authenticated remote
+        working-directory: publish
+        env:
+          OPENCLAW_DOCS_SYNC_TOKEN: ${{ secrets.OPENCLAW_DOCS_SYNC_TOKEN }}
+        run: |
+          set -euo pipefail
+          git remote set-url origin \
+            "https://x-access-token:${OPENCLAW_DOCS_SYNC_TOKEN}@github.com/openclaw/docs.git"
 
       - name: Sync docs into publish repo
         run: |
@@ -45,6 +55,8 @@ jobs:
 
       - name: Commit publish repo sync
         working-directory: publish
+        env:
+          OPENCLAW_DOCS_SYNC_TOKEN: ${{ secrets.OPENCLAW_DOCS_SYNC_TOKEN }}
         run: |
           set -euo pipefail
           if git diff --quiet -- docs .openclaw-sync; then
@@ -54,8 +66,10 @@ jobs:
 
           git config user.name "openclaw-docs-sync[bot]"
           git config user.email "openclaw-docs-sync[bot]@users.noreply.github.com"
+
           git add docs .openclaw-sync
           git commit -m "chore(sync): mirror docs from $GITHUB_REPOSITORY@$GITHUB_SHA"
+
           for attempt in 1 2 3 4 5; do
             git fetch origin main
             git rebase origin/main
